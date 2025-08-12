@@ -1,0 +1,17 @@
+{
+  "name": "bookmyshow",
+  "version": "1.0.0",
+  "main": "index.js",
+  "devDependencies": {
+    "@playwright/test": "^1.53.0",
+    "@types/node": "^24.0.1"
+  },
+  "scripts": {
+    "dev": "nodemon login.js",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.5.0",
+    "node-fetch": "^3.3.2"
+  }
+}
