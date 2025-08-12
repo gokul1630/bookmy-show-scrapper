@@ -7,7 +7,7 @@
     "@types/node": "^24.0.1"
   },
   "scripts": {
-    "dev": "nodemon login.js",
+    "dev": "nodemon index.js",
     "start": "node index.js"
   },
   "dependencies": {
