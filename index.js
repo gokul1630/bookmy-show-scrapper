@@ -11,6 +11,8 @@ const timesToSearch = [''];
 
 const ntfy_channel = '';
 
+const intervalToScrape = 10000;
+
 const fetchTheaters = async () => {
     try {
         const browser = await chromium.launch({ headless: true });
@@ -27,75 +29,89 @@ const fetchTheaters = async () => {
             '.ReactVirtualized__Grid__innerScrollContainer'
         );
 
-        const children = await container.$$('.sc-e8nk8f-3');
+        if (container) {
+            const children = await container.$$('.sc-e8nk8f-3');
 
-        let data = [];
-        for (const child of children) {
-            const theaterNameNode = await child.$('.sc-1qdowf4-0');
-            let theaterNameText = '';
-            if (theaterNameNode) {
-                const theaterName = await theaterNameNode.textContent();
+            if (children) {
+                let data = [];
+                for (const child of children) {
+                    const theaterNameNode = await child.$('.sc-1qdowf4-0');
+                    let theaterNameText = '';
+                    if (theaterNameNode) {
+                        const theaterName = await theaterNameNode.textContent();
 
-                const regex = new RegExp(theaterNametoSearch.join('|'), 'i');
-                if (
-                    theaterNametoSearch?.length &&
-                    theaterName &&
-                    !regex.test(theaterName)
-                ) {
-                    continue;
-                }
+                        const regex = new RegExp(
+                            theaterNametoSearch.join('|'),
+                            'i'
+                        );
+                        if (
+                            theaterNametoSearch?.length &&
+                            theaterName &&
+                            !regex.test(theaterName)
+                        ) {
+                            continue;
+                        }
 
-                theaterNameText = theaterName;
-            }
-
-            const timeNode = await child.$$(
-                onlyAvailable ? '.sc-1vhizuf-1.fxGebS' : '.sc-1vhizuf-1'
-            );
-
-            const times = [];
-            if (timeNode) {
-                for (const timeEl of timeNode) {
-                    const time = await timeEl.$('.sc-1vhizuf-2');
-                    const timeText = await time.textContent();
-
-                    const timeRegex = new RegExp(timesToSearch.join('|'), 'i');
-
-                    if (timesToSearch?.length && timeRegex.test(timeText)) {
-                        times.push(timeText);
-                        continue;
-                    } else if (timesToSearch?.length) {
-                        continue;
+                        theaterNameText = theaterName;
                     }
 
-                    times.push(timeText);
+                    const timeNode = await child.$$(
+                        onlyAvailable ? '.sc-1vhizuf-1.fxGebS' : '.sc-1vhizuf-1'
+                    );
+
+                    const times = [];
+                    if (timeNode) {
+                        for (const timeEl of timeNode) {
+                            const time = await timeEl.$('.sc-1vhizuf-2');
+                            const timeText = await time.textContent();
+
+                            const timeRegex = new RegExp(
+                                timesToSearch.join('|'),
+                                'i'
+                            );
+
+                            if (
+                                timesToSearch?.length &&
+                                timeRegex.test(timeText)
+                            ) {
+                                times.push(timeText);
+                                continue;
+                            } else if (timesToSearch?.length) {
+                                continue;
+                            }
+
+                            times.push(timeText);
+                        }
+
+                        if (times?.length) {
+                            data.push({ theaterNameText, times });
+                        }
+                    }
                 }
 
-                if (times?.length) {
-                    data.push({ theaterNameText, times });
+                let notification = '';
+
+                data.forEach((item) => {
+                    notification += `
+\n${item.theaterNameText}`;
+
+                    notification += `
+${onlyAvailable ? 'Only available slots' : 'All slots'} to book\n`;
+                    item.times.forEach((time) => {
+                        notification += `
+${time}`;
+                    });
+                });
+
+                if (data?.length) {
+                    fetch('https://ntfy.sh/' + ntfy_channel, {
+                        method: 'POST',
+                        body: notification,
+                    });
                 }
             }
         }
 
-        let notification = '';
-
-        data.forEach((item) => {
-            notification += `
-\n${item.theaterNameText}`;
-
-            notification += `
-${onlyAvailable ? 'Only available slots' : 'All slots'} to book\n`;
-            item.times.forEach((time) => {
-                notification += `
-${time}`;
-            });
-        });
-
-        if (data?.length) {
-            fetch('https://ntfy.sh/'+ntfy_channel, {
-                method: 'POST',
-                body: notification,
-            });
-        }
         await browser.close();
     } catch (error) {
         console.error(error);
@@ -104,13 +120,13 @@ ${time}`;
             spawn(process.argv[0], process.argv.slice(1), {
                 stdio: 'inherit',
             });
-        }, 10000);
+        }, intervalToScrape);
     }
 };
 
 (async function loop() {
     while (true) {
         await fetchTheaters();
-        await new Promise((res) => setTimeout(res, 10000));
+        await new Promise((res) => setTimeout(res, intervalToScrape));
     }
 })();
